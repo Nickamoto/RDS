@@ -1,0 +1,106 @@
+# Added RDS instance
+# Revision number, 1.0
+# Date August 30, 2025
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VPC (VPC-nicfra2087) in us-west-2 spanning three AZs with three subnets.
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC-nicfra2087
+
+  SubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs 'us-west-2']
+      CidrBlock: 10.0.0.0/20
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: VPC-nicfra2087-subnet-a
+
+  SubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs 'us-west-2']
+      CidrBlock: 10.0.16.0/20
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: VPC-nicfra2087-subnet-b
+
+  SubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [2, !GetAZs 'us-west-2']
+      CidrBlock: 10.0.32.0/20
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: VPC-nicfra2087-subnet-c
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow MySQL inbound traffic
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.0.0.0/16   # restrict this to trusted IPs in production!
+      Tags:
+        - Key: Name
+          Value: VPC-nicfra2087-rds-sg
+
+  RdsSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets for RDS instance
+      SubnetIds:
+        - !Ref SubnetA
+        - !Ref SubnetB
+        - !Ref SubnetC
+      Tags:
+        - Key: Name
+          Value: VPC-nicfra2087-rds-subnetgroup
+
+  RdsInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+      VPCSecurityGroups:
+        - !Ref SecurityGroup
+      AllocatedStorage: '5'
+      DBInstanceClass: db.t3.micro
+      DBInstanceIdentifier: playground-db
+      Engine: MySQL
+      MasterUsername: Admin
+      MasterUserPassword: CloudAcademy123!
+
+Outputs:
+  VpcId:
+    Description: ID of the created VPC
+    Value: !Ref VPC
+  SubnetAId:
+    Description: ID of Subnet A
+    Value: !Ref SubnetA
+  SubnetBId:
+    Description: ID of Subnet B
+    Value: !Ref SubnetB
+  SubnetCId:
+    Description: ID of Subnet C
+    Value: !Ref SubnetC
+  RdsEndpoint:
+    Description: Endpoint of the RDS instance
+    Value: !GetAtt RdsInstance.Endpoint.Address
